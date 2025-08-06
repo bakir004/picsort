@@ -13,6 +13,16 @@ pub struct ImageFile {
     pub created: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ImageMetadata {
+    pub path: String,
+    pub name: String,
+    pub size: u64,
+    pub created: String,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+}
+
 fn is_image_file(filename: &str) -> bool {
     let ext = Path::new(filename)
         .extension()
@@ -74,6 +84,43 @@ fn list_images_in_folder(folder_path: String) -> Result<Vec<ImageFile>, String> 
 }
 
 #[tauri::command]
+fn get_image_metadata(path: String) -> Result<ImageMetadata, String> {
+    let file = File::open(&path).map_err(|e| e.to_string())?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    
+    let name = Path::new(&path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+    
+    // Get creation time, fallback to modified time if creation time is not available
+    let created_time = metadata
+        .created()
+        .or_else(|_| metadata.modified())
+        .map_err(|e| e.to_string())?;
+    
+    let created_iso = created_time
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    
+    // Convert to ISO string format
+    let created_string = chrono::DateTime::from_timestamp(created_iso as i64, 0)
+        .unwrap_or_else(|| chrono::Utc::now())
+        .to_rfc3339();
+    
+    Ok(ImageMetadata {
+        path,
+        name,
+        size: metadata.len(),
+        created: created_string,
+        width: None, // We'll get this from the frontend
+        height: None,
+    })
+}
+
+#[tauri::command]
 fn list_filenames_in_folder(folder_path: String) -> Result<Vec<String>, String> {
     let path = Path::new(&folder_path);
     if !path.is_dir() {
@@ -112,6 +159,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             read_image_as_base64,
+            get_image_metadata,
             list_filenames_in_folder,
             list_images_in_folder
         ])

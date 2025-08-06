@@ -59,7 +59,17 @@ function App() {
                       />
                     } 
                   />
-                  <Route path="/gallery" element={<Gallery />} />
+                  <Route 
+                    path="/gallery" 
+                    element={
+                      <Gallery 
+                        imageFiles={imageFiles}
+                        onDeleteImages={(paths) => {
+                          setImageFiles(prev => prev.filter(img => !paths.includes(img.path)));
+                        }}
+                      />
+                    } 
+                  />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>
               </div>
