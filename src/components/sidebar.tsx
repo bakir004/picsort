@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HomeIcon, ImageIcon, SettingsIcon, FolderIcon, Loader2Icon } from "lucide-react";
 
 interface ImageFile {
@@ -20,10 +20,10 @@ interface SidebarProps {
 export default function Sidebar({ images = [], 
   onImageSelect, selectedImageIndex, folderPath, imagesLoading }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navItems = [
     { path: "/", label: "Home", icon: HomeIcon },
-    { path: "/gallery", label: "Gallery", icon: ImageIcon },
     { path: "/settings", label: "Settings", icon: SettingsIcon },
   ];
 
@@ -42,6 +42,16 @@ export default function Sidebar({ images = [],
   const getFolderName = (path: string) => {
     const parts = path.split(/[/\\]/);
     return parts[parts.length - 1] || path;
+  };
+
+  const handleImageClick = (index: number) => {
+    // Navigate to home if not already there
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
+    
+    // Select the image
+    onImageSelect?.(index);
   };
 
   return (
@@ -86,7 +96,7 @@ export default function Sidebar({ images = [],
               {images.map((image, index) => (
                 <button
                   key={image.path}
-                  onClick={() => onImageSelect?.(index)}
+                  onClick={() => handleImageClick(index)}
                   className={`w-full text-left px-1 py-0.5 rounded-md text-sm transition-colors ${
                     selectedImageIndex === index
                       ? "bg-zinc-800 text-white"
@@ -95,7 +105,20 @@ export default function Sidebar({ images = [],
                   title={image.name}
                 >
                   <div className="flex items-center gap-2">
-                    <ImageIcon className="w-3 h-3 flex-shrink-0" />
+                    {/* Image Thumbnail */}
+                    <div className="w-4 h-4 rounded border border-zinc-600 overflow-hidden flex-shrink-0">
+                      {image.data ? (
+                        <img
+                          src={`data:image/jpeg;base64,${image.data}`}
+                          alt={image.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-zinc-700 flex items-center justify-center">
+                          <ImageIcon className="w-2 h-2 text-zinc-500" />
+                        </div>
+                      )}
+                    </div>
                     <span className="truncate">{truncateFilename(image.name)}</span>
                   </div>
                 </button>

@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useState } from "react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
+import FolderManager from "./components/folder-manager";
 import Home from "./components/pages/home";
-import Gallery from "./components/pages/gallery";
 import Settings from "./components/pages/settings";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "./components/ui/resizable";
 
@@ -26,6 +26,10 @@ function App() {
     setSelectedImageIndex(index);
   };
 
+  const selectedImagePath = selectedImageIndex !== null 
+    ? imageFiles[selectedImageIndex]?.path 
+    : undefined;
+
   return (
     <Router>
       <main className="h-screen w-screen bg-zinc-900 text-white dark">
@@ -42,7 +46,7 @@ function App() {
               />
             </ResizablePanel>
             <ResizableHandle />
-            <ResizablePanel defaultSize={85}>
+            <ResizablePanel defaultSize={70}>
               <div className="routes flex-1 h-full w-full">
                 <Routes>
                   <Route 
@@ -59,20 +63,19 @@ function App() {
                       />
                     } 
                   />
-                  <Route 
-                    path="/gallery" 
-                    element={
-                      <Gallery 
-                        imageFiles={imageFiles}
-                        onDeleteImages={(paths) => {
-                          setImageFiles(prev => prev.filter(img => !paths.includes(img.path)));
-                        }}
-                      />
-                    } 
-                  />
+
                   <Route path="/settings" element={<Settings />} />
                 </Routes>
               </div>
+            </ResizablePanel>
+            <ResizableHandle />
+            <ResizablePanel defaultSize={15} minSize={15} maxSize={25}>
+              <FolderManager
+                onFolderSelect={setFolderPath}
+                selectedImagePath={selectedImagePath}
+                imageFiles={imageFiles}
+                onImageSelect={handleImageSelect}
+              />
             </ResizablePanel>
           </ResizablePanelGroup>
         </section>

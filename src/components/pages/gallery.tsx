@@ -10,9 +10,10 @@ interface ImageFile {
 
 interface GalleryProps {
   imageFiles?: ImageFile[];
+  onDeleteImages?: (paths: string[]) => void;
 }
 
-export default function Gallery({ imageFiles = [] }: GalleryProps) {
+export default function Gallery({ imageFiles = [], onDeleteImages }: GalleryProps) {
 
   return (
     <div className="flex-1 p-6">
