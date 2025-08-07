@@ -43,6 +43,8 @@ function App() {
                 selectedImageIndex={selectedImageIndex}
                 folderPath={folderPath}
                 imagesLoading={imagesLoading}
+                onFolderSelect={setFolderPath}
+                folderLoading={imagesLoading}
               />
             </ResizablePanel>
             <ResizableHandle />
@@ -69,7 +71,7 @@ function App() {
               </div>
             </ResizablePanel>
             <ResizableHandle />
-            <ResizablePanel defaultSize={15} minSize={15} maxSize={25}>
+            <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
               <FolderManager
                 onFolderSelect={setFolderPath}
                 selectedImagePath={selectedImagePath}

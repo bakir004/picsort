@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HomeIcon, ImageIcon, SettingsIcon, FolderIcon, Loader2Icon } from "lucide-react";
+import UploadFolderButton from "./upload-folder-button";
 
 interface ImageFile {
   name: string;
@@ -15,10 +16,12 @@ interface SidebarProps {
   selectedImageIndex?: number | null;
   folderPath?: string | null;
   imagesLoading?: boolean;
+  onFolderSelect?: (path: string) => void;
+  folderLoading?: boolean;
 }
 
 export default function Sidebar({ images = [], 
-  onImageSelect, selectedImageIndex, folderPath, imagesLoading }: SidebarProps) {
+  onImageSelect, selectedImageIndex, folderPath, imagesLoading, onFolderSelect, folderLoading }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -76,6 +79,16 @@ export default function Sidebar({ images = [],
             </Link>
           );
         })}
+        
+        {/* Upload Folder Button */}
+        {onFolderSelect && (
+          <div className="w-full">
+            <UploadFolderButton 
+              onFolderSelect={onFolderSelect} 
+              loading={folderLoading || false} 
+            />
+          </div>
+        )}
       </nav>
 
       {/* File Explorer */}

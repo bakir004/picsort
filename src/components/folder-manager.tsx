@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FolderIcon, MoveIcon, CheckIcon, XIcon, Folder, ChevronRightIcon } from 'lucide-react';
@@ -18,6 +19,11 @@ interface PendingMove {
 
 interface PendingMovesMap {
   [imagePath: string]: PendingMove;
+}
+
+interface FolderCounts {
+  currentImages: number;
+  pendingCopies: number;
 }
 
 interface FolderManagerProps {
@@ -44,6 +50,7 @@ export default function FolderManager({ onFolderSelect, selectedImagePath, image
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
   const [showCopyConfirm, setShowCopyConfirm] = useState<boolean>(false);
   const [copiedToClipboard, setCopiedToClipboard] = useState<boolean>(false);
+  const [folderCounts, setFolderCounts] = useState<Map<string, FolderCounts>>(new Map());
 
   // Load auto-advance preference and listen for changes
   useEffect(() => {
@@ -387,6 +394,55 @@ export default function FolderManager({ onFolderSelect, selectedImagePath, image
     setCurrentPath(path);
   };
 
+  // Function to count current images in a folder
+  const countImagesInFolder = async (folderPath: string): Promise<number> => {
+    try {
+      const images = await invoke('list_images_in_folder', { folderPath }) as Array<{ path: string; name: string; size: number; created: string }>;
+      return images.length;
+    } catch (error) {
+      console.error(`Error counting images in ${folderPath}:`, error);
+      return 0;
+    }
+  };
+
+  // Function to count pending copies for a folder
+  const countPendingCopiesForFolder = (folderPath: string): number => {
+    return Object.values(pendingMoves).filter(move => move.targetFolder === folderPath).length;
+  };
+
+  // Function to update folder counts
+  const updateFolderCounts = async () => {
+    if (!folderStructure) return;
+
+    const newCounts = new Map<string, FolderCounts>();
+    
+    // Helper function to process folder and its subfolders
+    const processFolder = async (folder: FolderStructure) => {
+      const currentImages = await countImagesInFolder(folder.path);
+      const pendingCopies = countPendingCopiesForFolder(folder.path);
+      
+      newCounts.set(folder.path, {
+        currentImages,
+        pendingCopies
+      });
+      
+      // Process subfolders
+      for (const subfolder of folder.subfolders) {
+        await processFolder(subfolder);
+      }
+    };
+    
+    await processFolder(folderStructure);
+    setFolderCounts(newCounts);
+  };
+
+  // Update counts when folder structure or pending moves change
+  useEffect(() => {
+    if (folderStructure) {
+      updateFolderCounts();
+    }
+  }, [folderStructure, pendingMoves]);
+
   const renderFolderTree = (folder: FolderStructure, depth: number = 0, path: number[] = []) => {
     const indent = depth * 12; // 12px per level
     
@@ -400,6 +456,9 @@ export default function FolderManager({ onFolderSelect, selectedImagePath, image
     
     // Check if this is the target folder when sequence ends with 0
     const isTargetWithZero = keyBuffer && keyBuffer.endsWith('0') && currentSequence === keyBuffer.slice(0, -1);
+    
+    // Get counts for this folder
+    const counts = folderCounts.get(folder.path) || { currentImages: 0, pendingCopies: 0 };
     
     return (
       <div key={folder.path} className="space-y-1">
@@ -426,7 +485,39 @@ export default function FolderManager({ onFolderSelect, selectedImagePath, image
             }`} /> 
             {truncateFilename(folder.name)}
             {depth === 0 && <span className="text-xs text-zinc-500">(root)</span>}
+            
+            {/* Image count badges next to folder name */}
+            {(counts.currentImages > 0 || counts.pendingCopies > 0) && (
+              <span className="text-sm text-zinc-500">
+                (
+                {counts.currentImages > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-zinc-400 cursor-help">{counts.currentImages}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{counts.currentImages} image{counts.currentImages !== 1 ? 's' : ''} currently in this folder</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {counts.currentImages > 0 && counts.pendingCopies > 0 && (
+                  <span className="text-zinc-500">, </span>
+                )}
+                {counts.pendingCopies > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-blue-400 cursor-help">+{counts.pendingCopies}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{counts.pendingCopies} image{counts.pendingCopies !== 1 ? 's' : ''} will be copied to this folder</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                )
+              </span>
+            )}
           </span>
+          
           <span className={`text-xs font-mono rounded border px-1 py-0.5 ${
             isPinged
               ? 'text-green-300 border-green-500 bg-green-600/20' 
@@ -606,7 +697,7 @@ export default function FolderManager({ onFolderSelect, selectedImagePath, image
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-zinc-500">
             <FolderIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <div className="text-xs">Select a folder with subfolders</div>
+            <div className="text-xs">Select a destination folder with subfolders where you will sort your images</div>
           </div>
         </div>
       ) : (
